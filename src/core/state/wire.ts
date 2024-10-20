@@ -1,20 +1,8 @@
 import { getCursorProxyMeta } from "../../utils/index";
 import * as Constants from "../constants";
-import {
-  Signal,
-  SignalGetter,
-  StoreCursor,
-  StoreManager,
-  SubToken,
-  Wire,
-  WireFactory,
-  WireFunction,
-} from "./types";
-import { isSignal, isSignalGetter, isStoreCursor } from "./utils";
-export {
-  getCursorProxyMeta as getProxyMeta,
-  getCursor as getProxyPath,
-} from "../../utils/index";
+import { Signal, SignalGetter, StoreCursor, StoreManager, SubToken, Wire, WireFactory, WireFunction } from "./types";
+import { arrayRemoveItem, isSignal, isSignalGetter, isStoreCursor } from "./utils";
+export { getCursorProxyMeta as getProxyMeta, getCursor as getProxyPath } from "../../utils/index";
 export type { ObjPathProxy } from "../../utils/index";
 
 let WIRE_COUNTER = 0;
@@ -25,30 +13,29 @@ const S_NEEDS_RUN = 0b001 as const;
 
 export const createWire: WireFactory = (arg: WireFunction): Wire => {
   WIRE_COUNTER++;
-  const wire: Wire = Object.assign(() => {}, {
+  const wire: Wire = {
     id: WIRE_COUNTER,
     type: Constants.WIRE,
     fn: arg,
-    sigs: new Set(),
+    sigs: [],
     stores: new Map(),
-    tasks: new Set(),
+    tasks: [],
     state: S_NEEDS_RUN,
     upper: undefined,
-    lower: new Set(),
+    lower: [],
     r: 0,
     run: () => {
-      const val = runWire(arg, wire.token, wire.subWire);
+      return runWire(arg, wire.token, wire.subWire);
       // Clean up unused nested wires
-      return val;
     },
     subWire: (subFn: WireFunction) => {
       const subWire = createWire(subFn);
       subWire.upper = wire;
-      wire.lower.add(subWire);
+      wire.lower.push(subWire);
       return subWire;
     },
     token: undefined as any,
-  } as Wire);
+  };
   wire.token = getSubtoken(wire);
   return wire;
 };
@@ -111,11 +98,11 @@ export const runWire = (
 
 export const wireReset = (wire: Wire<any>): void => {
   wire.lower.forEach(wireReset);
-  wire.sigs.forEach((signal) => signal.w.delete(wire));
+  wire.sigs.forEach((signal) => arrayRemoveItem(signal.w, wire));
   wire.stores.forEach((store) => {
     const manager = getCursorProxyMeta<StoreManager>(store);
     if (manager) {
-      manager.w.delete(wire);
+      arrayRemoveItem(manager.w, wire);
     }
   });
   _initWire(wire);
@@ -123,9 +110,9 @@ export const wireReset = (wire: Wire<any>): void => {
 
 const _initWire = (wire: Wire<any>): void => {
   wire.state = S_NEEDS_RUN;
-  wire.lower = new Set();
+  wire.lower = [];
   // Drop all signals now that they have been unlinked
-  wire.sigs = new Set();
+  wire.sigs = [];
   wire.stores = new Map();
 };
 
@@ -142,24 +129,24 @@ const wireResume = (wire: Wire): boolean => {
   return !!(wire.state & S_NEEDS_RUN);
 };
 
-export const runWires = (wires: Set<Wire<any>>): void => {
+export const runWires = (wires: Array<Wire<any>>): void => {
   // Use a new Set() to avoid infinite loops caused by wires writing to signals
   // during their run.
-  const toRun = new Set(wires);
+  const toRun = wires;
   let curr: Wire<any> | undefined;
   // Mark upstream computeds as stale. Must be in an isolated for-loop
   toRun.forEach((wire) => {
     if (wire.state & S_SKIP_RUN_QUEUE) {
-      toRun.delete(wire);
+      arrayRemoveItem(toRun, wire);
       wire.state |= S_NEEDS_RUN;
     }
     // TODO: Test (#3) + Benchmark with main branch
     // If a wire's ancestor will run it'll destroy its lower wires. It's more
     // efficient to not call them at all by deleting from the run list:
     curr = wire;
-    while ((curr = curr.upper)) if (toRun.has(curr)) return toRun.delete(wire);
+    while ((curr = curr.upper)) if (toRun.indexOf(curr) > -1) return arrayRemoveItem(toRun, wire);
   });
-  toRun.forEach((wire) => {
+  for (var wire of toRun) {
     const previousValue = wire.v;
     const val = runWire(wire.fn, wire.token, wire.subWire);
 
@@ -170,5 +157,5 @@ export const runWires = (wires: Set<Wire<any>>): void => {
     for (const task of wire.tasks) {
       task(val);
     }
-  });
+  }
 };

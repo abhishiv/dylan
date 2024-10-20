@@ -2,13 +2,7 @@ import { StoreManager, Wire, wireReset } from "../core/state";
 import * as DOMConstants from "../dom/constants";
 import { getCursorProxyMeta } from "../utils";
 import { getRenderContext, renderTreeStep, rmNodes } from "./api";
-import type {
-  GenericEventAttrs,
-  HTMLAttrs,
-  HTMLElements,
-  SVGAttrs,
-  SVGElements,
-} from "./jsx";
+import type { GenericEventAttrs, HTMLAttrs, HTMLElements, SVGAttrs, SVGElements } from "./jsx";
 import {
   Component,
   ComponentUtils,
@@ -20,13 +14,7 @@ import {
   VElement,
 } from "./types";
 
-export {
-  addNode,
-  insertElement,
-  removeElement,
-  removeNode,
-  updateElement,
-} from "./api";
+export { addNode, insertElement, removeElement, removeNode, updateElement } from "./api";
 export * as DOMConstants from "./constants";
 export { reifyTree } from "./traverser";
 export * from "./types";
@@ -48,11 +36,7 @@ export function component<T = any>(
   return def as Component<T>;
 }
 
-function h(
-  t: string | Component<any>,
-  p?: any,
-  ...children: VElement[]
-): VElement {
+function h(t: string | Component<any>, p?: any, ...children: VElement[]): VElement {
   const props = {
     ...(p || {}),
     children: [...(children || [])].map((el) => el),
@@ -64,11 +48,7 @@ function h(
   } as ComponentVElement | NativeVElement;
 }
 
-export function render(
-  element: VElement,
-  container: HTMLElement,
-  options = {}
-) {
+export function render(element: VElement, container: HTMLElement, options = {}) {
   const renderContext = getRenderContext(container, element, (options = {}));
   //console.log("root", renderContext);
   renderTreeStep(renderContext, element);
@@ -90,14 +70,14 @@ export function unrender(arg: RenderContext | TreeStep[]) {
       step.wires = [];
       Object.values(step.state.stores).forEach((s) => {
         const manager = getCursorProxyMeta<StoreManager>(s as any);
-        manager.tasks.clear();
-        manager.w.clear();
+        manager.tasks = [];
+        manager.w = [];
         // manager.unsubscribe();
       });
       step.onUnmount.forEach((el) => el(step));
       // step.state.stores = {};
       Object.values(step.state.sigs).forEach((sig) => {
-        sig.w.clear();
+        sig.w = [];
       });
       step.state.ctx.clear();
     } else if (step.type == DOMConstants.WireTreeStep) {
@@ -139,19 +119,16 @@ export declare namespace h {
 
     // Allow children on all DOM elements (not components, see above)
     // ESLint will error for children on void elements like <img/>
-    export type DOMAttributes<Target extends EventTarget> =
-      GenericEventAttrs<Target> & {};
+    export type DOMAttributes<Target extends EventTarget> = GenericEventAttrs<Target> & {};
 
-    export type HTMLAttributes<Target extends EventTarget> =
-      AllowWireForProperties<Omit<HTMLAttrs, "style">> & {
-        style?: MaybeWire<string>;
-      } & DOMAttributes<Target> &
-        IntrinsicAttributes;
+    export type HTMLAttributes<Target extends EventTarget> = AllowWireForProperties<Omit<HTMLAttrs, "style">> & {
+      style?: MaybeWire<string>;
+    } & DOMAttributes<Target> &
+      IntrinsicAttributes;
 
-    export type SVGAttributes<Target extends EventTarget> =
-      AllowWireForProperties<SVGAttrs> &
-        HTMLAttributes<Target> &
-        IntrinsicAttributes;
+    export type SVGAttributes<Target extends EventTarget> = AllowWireForProperties<SVGAttrs> &
+      HTMLAttributes<Target> &
+      IntrinsicAttributes;
 
     export type IntrinsicElements = {
       [El in keyof HTMLElements]: HTMLAttributes<HTMLElements[El]>;

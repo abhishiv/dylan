@@ -1,22 +1,9 @@
 // Crawl the tree in post-order.
-export const crawl = <T>(
-  root: T,
-  iterate: (node: T) => void,
-  options: { order: "post"; kids: (node: T) => T[] }
-) => {
-  dfsPostOrder(root, iterate, options.kids);
-};
-
-// Helper function for dfsPostOrder.
-export const dfsPostOrder = <T>(
-  root: T,
-  iterate: (node: T) => void,
-  kids: (node: T) => T[]
-) => {
+export const crawl = <T>(root: T, iterate: (node: T) => void, options: { order: "post"; kids: (node: T) => T[] }) => {
   // The stack holds the nodes we need to visit.
   const stack: { node: T; v: boolean }[] = [];
   // Keep track of the nodes we've visited.
-  const visited = new Set();
+  const visited: any[] = [];
 
   // Push the root node onto the stack to start the traversal.
   stack.push({ node: root, v: false });
@@ -28,16 +15,17 @@ export const dfsPostOrder = <T>(
       iterate(node);
       stack.pop();
     } else {
-      visited.add(node);
+      visited.push(node);
       // Mark that we've visited the node's children.
       stack[stack.length - 1].v = true;
       // Otherwise, push all the unvisited children onto the stack.
-      const children = (kids(node) || []).reverse();
-      children.forEach((child) => {
-        if (!visited.has(child)) {
+
+      const children = (options.kids(node) || []).reverse();
+      for (const child of children) {
+        if (visited.indexOf(child) == -1) {
           stack.push({ node: child, v: false });
         }
-      });
+      }
     }
   }
 };

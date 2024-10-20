@@ -6,10 +6,9 @@ import { VElement } from "../../dom/types";
 import { ParentWireContext } from "../../dom/index";
 import { addNode, removeNode } from "../../dom/api";
 import { reifyTree } from "../../dom/traverser";
+import { arrayRemoveItem } from "../../core/state";
 
-export type WhenViews =
-  | Record<string, () => VElement>
-  | ((value: any) => VElement);
+export type WhenViews = Record<string, () => VElement> | ((value: any) => VElement);
 export type WhenProps = {
   condition: ($: SubToken) => any;
   views: WhenViews;
@@ -42,10 +41,10 @@ export const When = component<WhenProps>(
       }
     };
     onMount(() => {
-      underlying.tasks.add(task);
+      underlying.tasks.push(task);
     });
     onUnmount(() => {
-      underlying.tasks.delete(task);
+      arrayRemoveItem(underlying.tasks, task);
     });
     const view = getView(value);
     return view ? view() : null;

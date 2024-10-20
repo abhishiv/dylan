@@ -116,10 +116,9 @@ describe("Basic Implementation of Stores & Wires", (test) => {
     const store1 = createStore<{ a?: any; list: any[] }>({ list: [] });
     const store2 = createStore<{ a?: any; list: any[] }>({ list: [] });
 
-    const store1Manager: StoreManager =
-      getCursorProxyMeta<StoreManager>(store1);
+    const store1Manager: StoreManager = getCursorProxyMeta<StoreManager>(store1);
     const changes: StoreChange[] = [];
-    store1Manager.tasks.add({
+    store1Manager.tasks.push({
       path: [],
       observor: (change) => {
         changes.push(change);

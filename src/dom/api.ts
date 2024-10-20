@@ -1,22 +1,9 @@
 import { unrender } from ".";
-import {
-  Signal,
-  StoreCursor,
-  createComputedSignal,
-  createSignal,
-  createStore,
-  createWire,
-} from "../core/state";
+import { Signal, StoreCursor, createComputedSignal, createSignal, createStore, createWire } from "../core/state";
 import * as DOMConstants from "./constants";
 import { LiveDocumentFragment } from "./dom";
 import { reifyTree } from "./traverser";
-import {
-  ComponentTreeStep,
-  ComponentUtils,
-  RenderContext,
-  TreeStep,
-  VElement,
-} from "./types";
+import { ComponentTreeStep, ComponentUtils, RenderContext, TreeStep, VElement } from "./types";
 import {
   arrayRemove,
   createError,
@@ -42,18 +29,11 @@ export const insertElement = (
   }, parentStep);
   if (!step) throw createError(120);
 
-  const afterIndex = after
-    ? step.k.findIndex((el) => el.id === after)
-    : undefined;
+  const afterIndex = after ? step.k.findIndex((el) => el.id === after) : undefined;
 
   const [registry, root] = reifyTree(renderContext, el, step, afterIndex);
 
-  addNode(
-    renderContext,
-    step,
-    root,
-    afterIndex && afterIndex > -1 ? step.k[afterIndex as number] : undefined
-  );
+  addNode(renderContext, step, root, afterIndex && afterIndex > -1 ? step.k[afterIndex as number] : undefined);
 };
 
 export const removeElement = (
@@ -73,12 +53,7 @@ export const removeElement = (
   removeNode(renderContext, child);
 };
 
-export const updateElement = (
-  renderContext: RenderContext,
-  parentStep: TreeStep,
-  key: string[],
-  value: string
-) => {
+export const updateElement = (renderContext: RenderContext, parentStep: TreeStep, key: string[], value: string) => {
   // todo
 };
 
@@ -98,63 +73,54 @@ export const getLiveFragmentChildNodes = (frag: LiveDocumentFragment) => {
 export const addNode = (
   renderCtx: RenderContext,
   parentStep: TreeStep | undefined,
-  node: TreeStep,
+  node: TreeStep | TreeStep[],
   before?: TreeStep
 ) => {
   //console.log("addNode", parentStep, node, before);
+  const [nodes, elementsToInsert] = Array.isArray(node)
+    ? [node, node.map((el) => el.dom)]
+    : [[node], node.dom instanceof DocumentFragment ? node.dom : [node.dom]];
+  //  console.log("addNode", nodes, elementsToInsert);
   const handle = (node: TreeStep) => {
     const nodes = getDescendants(node);
     //console.log("n", nodes, nodes.length);
-    nodes.forEach((step) => {
-      renderCtx.reg.add(step);
-    });
+    renderCtx.reg.push(...nodes);
+    node.parent = parentStep;
 
-    if (!node.dom) return;
     // dom
-    if (!parentStep) {
-      //      console.log("no parent", renderCtx.el, node.dom);
-      renderCtx.el.append(node.dom);
-    } else {
-      node.parent = parentStep;
-      if (parentStep && before) {
-        const elementsToInsert = node.dom;
-        const beforeIndex = parentStep.k.indexOf(before);
-        parentStep.k.splice(beforeIndex, 0, node);
-
-        const refNode: HTMLElement = before.dom as HTMLElement;
-        refNode.before(elementsToInsert);
-      } else if (parentStep) {
-        const parentDOM = parentStep.dom;
-        const elementsToInsert = node.dom;
-        parentStep.k.push(node);
-        if (parentDOM && (parentDOM as HTMLElement)) {
-          parentDOM.append(elementsToInsert);
-        }
-      }
-    }
     nodes.forEach((step) => {
       // call onMount
       // call ref
-      if (
-        step.type === DOMConstants.ComponentTreeStep ||
-        step.type === DOMConstants.NativeTreeStep
-      ) {
+      if (step.type === DOMConstants.ComponentTreeStep || step.type === DOMConstants.NativeTreeStep) {
         if (step.node.p && step.node.p.ref && step.dom) {
           step.node.p.ref(step.dom);
         }
       }
-      if (
-        step.type === DOMConstants.ComponentTreeStep &&
-        step.onMount.length > 0
-      ) {
+      if (step.type === DOMConstants.ComponentTreeStep && step.onMount.length > 0) {
         step.onMount.forEach((el) => el());
       }
     });
   };
-  if (Array.isArray(node)) {
-    node.forEach(handle);
+
+  nodes.forEach(handle);
+
+  if (!parentStep) {
+    //      console.log("no parent", renderCtx.el, node.dom);
+    renderCtx.el.append.apply(renderCtx.el, [elementsToInsert]);
   } else {
-    handle(node);
+    if (parentStep && before) {
+      const beforeIndex = parentStep.k.indexOf(before);
+      parentStep.k.splice(beforeIndex, 0, ...nodes);
+
+      const refNode: HTMLElement = before.dom as HTMLElement;
+      refNode.before.apply(refNode, elementsToInsert);
+    } else if (parentStep) {
+      const parentDOM = parentStep.dom;
+      parentStep.k.push(...nodes);
+      if (parentDOM && (parentDOM as HTMLElement)) {
+        parentDOM.append.apply(parentDOM, elementsToInsert);
+      }
+    }
   }
 };
 
@@ -174,8 +140,8 @@ export const removeNode = (renderCtx: RenderContext, node: TreeStep) => {
   //  console.log("removeNode nodes", node, nodes);
   unrender(nodes);
   nodes.forEach((step) => {
-    renderCtx.reg.delete(step);
-    step;
+    const index = renderCtx.reg.indexOf(step);
+    index > -1 && renderCtx.reg.splice(index, 1);
     step.parent ? arrayRemove(step.parent.k, step) : null;
   });
 };
@@ -185,16 +151,13 @@ export const renderTreeStep = (renderCtx: RenderContext, element: VElement) => {
   //if (window.ss) return;
   renderCtx.el.innerHTML = "";
   const [registry, root] = reifyTree(renderCtx, element);
+  if (Array.isArray(root)) throw createError(101);
   const id = getVirtualElementId(root.node);
   if (!id) throw createError(101);
   addNode(renderCtx, undefined, root);
 };
 
-export const getRenderContext = (
-  container: HTMLElement,
-  element: VElement,
-  options = {}
-) => {
+export const getRenderContext = (container: HTMLElement, element: VElement, options = {}) => {
   const id = getVirtualElementId(element);
   if (!id) throw createError(101);
 
@@ -202,7 +165,7 @@ export const getRenderContext = (
     prev: new Map(),
     el: container,
     id,
-    reg: new Set(),
+    reg: [],
   };
 
   //console.log("renderContext", renderContext);
@@ -211,10 +174,7 @@ export const getRenderContext = (
   // so HMR is properly cleaned up
   renderContext.reg.forEach((step) => {
     //console.log("step", step);
-    if (
-      step.type === DOMConstants.ComponentTreeStep &&
-      step.onUnmount.length > 0
-    )
+    if (step.type === DOMConstants.ComponentTreeStep && step.onUnmount.length > 0)
       step.onUnmount.forEach((el) => el(step));
     if (step.type === DOMConstants.ComponentTreeStep) {
       if (step.mount && step.dom) {
@@ -242,7 +202,7 @@ export const getRenderContext = (
   });
   //if (window.ss) return;
 
-  renderContext.reg.clear();
+  renderContext.reg = [];
   (container as any)[id] = renderContext;
 
   return renderContext;

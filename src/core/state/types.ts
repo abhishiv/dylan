@@ -1,10 +1,7 @@
 import { ApplyData } from "on-change";
 import * as Constants from "../constants";
 import { ObjPathProxy } from "../../utils/index";
-export {
-  getCursorProxyMeta as getProxyMeta,
-  getCursor as getProxyPath,
-} from "../../utils/index";
+export { getCursorProxyMeta as getProxyMeta, getCursor as getProxyPath } from "../../utils/index";
 export type { ObjPathProxy } from "../../utils/index";
 
 export type SignalGetter<T = any> = {
@@ -19,7 +16,7 @@ export type SignalAPI<T = any> = [SignalGetter<T>, SignalSetter<T>];
 export type Signal<T = unknown> = SignalAPI & {
   id: number;
   /** Wires subscribed to this signal */
-  w: Set<Wire<any>>;
+  w: Array<Wire<any>>;
   /** To check "if x is a signal" */
   type: typeof Constants.SIGNAL;
 
@@ -28,37 +25,31 @@ export type Signal<T = unknown> = SignalAPI & {
   set: SignalSetter<T>;
 };
 
-export type ExtractElement<ArrayType extends ArrayOrObject> =
-  ArrayType extends readonly (infer ElementType)[] ? ElementType : never;
+export type ExtractElement<ArrayType extends ArrayOrObject> = ArrayType extends readonly (infer ElementType)[]
+  ? ElementType
+  : never;
 
 export type ArrayOrObject = Array<unknown>;
 
-export type ArrayOrObjectAndNotFunction = ArrayOrObject &
-  ({ bind?: never } | { call?: never });
+export type ArrayOrObjectAndNotFunction = ArrayOrObject & ({ bind?: never } | { call?: never });
 
-export type StoreCursor<
-  T = unknown,
-  TRoot = T
-> = T extends ArrayOrObjectAndNotFunction
+export type StoreCursor<T = unknown, TRoot = T> = T extends ArrayOrObjectAndNotFunction
   ? {
       [P in keyof T]: T[P];
     }
   : T;
 
-type extractGeneric<Type> = Type extends ObjPathProxy<unknown, infer X>
-  ? X
-  : Type extends StoreCursor<infer X>
-  ? X
-  : never;
+type extractGeneric<Type> =
+  Type extends ObjPathProxy<unknown, infer X> ? X : Type extends StoreCursor<infer X> ? X : never;
 
 export type StoreManager<T = unknown> = {
   id: string;
   v: T;
   rootCursor?: StoreCursor;
   /** Wires subscribed to this signal */
-  w: Set<Wire<any>>;
+  w: Array<Wire<any>>;
   type: typeof Constants.STORE;
-  tasks: Set<{
+  tasks: Array<{
     path: string[];
     observor: (change: StoreChange) => void;
   }>;
@@ -91,16 +82,16 @@ export type Wire<T = unknown> = {
   run: () => T;
 
   // Signals/Stores read-subscribed last run
-  sigs: Set<Signal<any>>;
+  sigs: Array<Signal<any>>;
   stores: Map<StoreManager, Set<string>>;
 
   // Post-run tasks
-  tasks: Set<(nextValue: T) => void>;
+  tasks: Array<(nextValue: T) => void>;
 
   // Wire that created this wire (parent of this child)
   upper: Wire | undefined;
   // Wires created during this run (children of this parent)
-  lower: Set<Wire>;
+  lower: Array<Wire>;
 
   token: SubToken;
   subWire: WireFactory;
@@ -109,10 +100,7 @@ export type Wire<T = unknown> = {
 export type WireFactory<T = any> = (arg: WireFunction<T>) => Wire<T>;
 
 export type WireFunction<T = unknown> = {
-  (
-    $: SubToken,
-    params: { createWire: WireFactory; wire: WireFactory; previousValue?: T }
-  ): T;
+  ($: SubToken, params: { createWire: WireFactory; wire: WireFactory; previousValue?: T }): T;
 };
 
 export type SubToken = {
