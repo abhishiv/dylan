@@ -6,9 +6,7 @@ export type DOMNodeType = HTMLElement | DocumentFragment;
 export type PrimitiveType = string | number | boolean | null | undefined;
 
 // https://stackoverflow.com/a/50924506
-type ExtractGenericFromContext<Type> = Type extends Context<infer X>
-  ? X
-  : never;
+type ExtractGenericFromContext<Type> = Type extends Context<infer X> ? X : never;
 export interface ComponentUtils {
   renderContext: RenderContext;
   signal<T = unknown>(name: string, value: T): Signal<T>;
@@ -106,18 +104,14 @@ export interface WireTreeStep extends BaseTreeStep {
   node: VElement;
 }
 
-export type TreeStep =
-  | NativeTreeStep
-  | ComponentTreeStep
-  | PrimitiveTreeStep
-  | WireTreeStep;
+export type TreeStep = NativeTreeStep | ComponentTreeStep | PrimitiveTreeStep | WireTreeStep;
 
 // mainly used by HMR & devtools
 export interface RenderContext {
   id: string;
   el: Element;
   prev: Map<string[], ComponentTreeStepState>;
-  reg: Set<TreeStep>;
+  reg: TreeStep[];
 }
 
 // Context like you'll find in react/solid

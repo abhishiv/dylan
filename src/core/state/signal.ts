@@ -1,8 +1,5 @@
 import * as Constants from "../constants";
-export {
-  getCursorProxyMeta as getProxyMeta,
-  getCursor as getProxyPath,
-} from "../../utils/index";
+export { getCursorProxyMeta as getProxyMeta, getCursor as getProxyPath } from "../../utils/index";
 export type { ObjPathProxy } from "../../utils/index";
 import { Signal, SignalGetter, SignalSetter, SubToken, Wire } from "./types";
 import { runWires } from "./wire";
@@ -14,8 +11,8 @@ export const createSignal = <T = any>(val: T): Signal<T> => {
   const get: SignalGetter<T> = (token?: SubToken) => {
     if (token) {
       // Two-way link. Signal writes will now call/update wire W
-      token.wire.sigs.add(sig);
-      sig.w.add(token.wire);
+      token.wire.sigs.push(sig);
+      sig.w.push(token.wire);
       return sig.v as T;
     } else {
       return sig.v as T;
@@ -34,7 +31,7 @@ export const createSignal = <T = any>(val: T): Signal<T> => {
   sig.id = SIGNAL_COUNTER;
   sig.type = Constants.SIGNAL;
   sig.v = val;
-  sig.w = new Set<Wire>();
+  sig.w = [];
 
   get.sig = sig;
 
@@ -50,6 +47,6 @@ export const createComputedSignal = <T = any>(wire: Wire<T>) => {
   const handler = () => {
     if (signal.get() !== wire.v) signal.set(wire.v as T);
   };
-  wire.tasks.add(handler);
+  wire.tasks.push(handler);
   return signal;
 };

@@ -29,10 +29,7 @@ export class LiveDocumentFragment extends DocumentFragment {
   }
 }
 
-export const createDOMNode = (
-  step: TreeStep,
-  isSvg?: boolean
-): Node | LiveDocumentFragment | undefined => {
+export const createDOMNode = (step: TreeStep, isSvg?: boolean): Node | LiveDocumentFragment | undefined => {
   if (!step || !step.node) return;
 
   // primitive types
@@ -45,11 +42,9 @@ export const createDOMNode = (
     const wire = step.node as Wire;
     const value = wire.run();
     let childEL: Node | undefined = undefined;
-    if (
-      ["string", "number", "boolean", "undefined"].indexOf(typeof value) > -1
-    ) {
-      childEL = createTextNode(wire.run() + "");
-      wire.tasks.add((val: any) => {
+    if (["string", "number", "boolean", "undefined"].indexOf(typeof value) > -1) {
+      childEL = createTextNode(value + "");
+      wire.tasks.push((val: any) => {
         childEL ? (childEL.textContent = val) : null;
       });
     }
@@ -58,10 +53,7 @@ export const createDOMNode = (
 
   if (step.node && typeof step.node === "object") {
     const props: Record<string, any> =
-      step.node.type === DOMConstants.COMPONENT ||
-      step.node.type === DOMConstants.NATIVE
-        ? step?.node?.p
-        : {};
+      step.node.type === DOMConstants.COMPONENT || step.node.type === DOMConstants.NATIVE ? step?.node?.p : {};
 
     // function component
     if (step.node.type === DOMConstants.COMPONENT) {
@@ -74,17 +66,17 @@ export const createDOMNode = (
       const el = isSvg
         ? document.createElementNS("http://www.w3.org/2000/svg", t)
         : document.createElement(step.node.t);
-      const { children, ...rest } = props;
 
-      for (const key in rest) {
+      for (const key in props) {
         // onClick to onclick
         // TODO: handle it better?
 
-        const value = rest[key];
+        const value = props[key];
 
         const isFunctionHandler = key[0] == "o" && key[1] == "n";
         const finalKey: string = isFunctionHandler ? key.toLowerCase() : key;
-        if (key === "dangerouslySetInnerHTML") {
+        if (key === "children") {
+        } else if (key === "dangerouslySetInnerHTML") {
           el.innerHTML = value.__html;
         } else if (key == "ref" && typeof value === "function") {
           //(value as any)(el);
@@ -96,7 +88,7 @@ export const createDOMNode = (
             const w: Wire<string> = value;
             const val = w.run();
             setAttributeValue(el, finalKey, val);
-            w.tasks.add((val) => {
+            w.tasks.push((val) => {
               setAttributeValue(el, finalKey, val);
             });
           } else {
@@ -110,21 +102,15 @@ export const createDOMNode = (
   }
 };
 
-const setAttributeValue = (
-  el: HTMLElement | SVGElement,
-  attr: string,
-  val: any
-) => {
+const setAttributeValue = (el: HTMLElement | SVGElement, attr: string, val: any) => {
   try {
     if (val === undefined) {
       (el as HTMLElement).removeAttribute(attr);
     } else {
       (el as HTMLElement).setAttribute(attr, val);
     }
-    if (el.tagName === "INPUT" && attr === "checked")
-      (el as HTMLInputElement).checked = !!val;
-    if (el.tagName === "INPUT" && attr === "value")
-      (el as HTMLInputElement).value = val;
+    if (el.tagName === "INPUT" && attr === "checked") (el as HTMLInputElement).checked = !!val;
+    if (el.tagName === "INPUT" && attr === "value") (el as HTMLInputElement).value = val;
   } catch (e) {
     //    console.error(el, attr, val);
     throw e;

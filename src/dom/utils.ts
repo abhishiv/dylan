@@ -1,3 +1,4 @@
+import { isCursorProxy } from "../utils";
 import { crawl } from "../utils/crawl";
 import * as DOMConstants from "./constants";
 import {
@@ -31,10 +32,7 @@ export const getDescendants = (node: TreeStep): TreeStep[] => {
 
 // note: optimised to eagerly return using for for/while loops
 // todo: use Array.some instead of for/while loops
-export const getTreeStepRenderContextState = (
-  renderContext: RenderContext,
-  step: TreeStep
-) => {
+export const getTreeStepRenderContextState = (renderContext: RenderContext, step: TreeStep) => {
   const findMatchingResult = (
     previousState: Map<string[], ComponentTreeStepState>,
     baseTreeStep: TreeStep
@@ -63,16 +61,10 @@ export const getTreeStepRenderContextState = (
   return match;
 };
 
-export const getContextProvider = (
-  ctxName: Context,
-  node: TreeStep
-): TreeStep | null => {
+export const getContextProvider = (ctxName: Context, node: TreeStep): TreeStep | null => {
   let ancestor = node.parent;
   while (ancestor) {
-    if (
-      ancestor.type === DOMConstants.ComponentTreeStep &&
-      ancestor.state.ctx.get(ctxName)
-    ) {
+    if (ancestor.type === DOMConstants.ComponentTreeStep && ancestor.state.ctx.get(ctxName)) {
       return ancestor;
     }
     ancestor = ancestor.parent;
@@ -84,11 +76,7 @@ export const checkIfSVG = (step: TreeStep) => {
   let isSVG = false;
   let iterNode = step;
   while (iterNode.parent) {
-    if (
-      iterNode.node &&
-      typeof iterNode.node === "object" &&
-      iterNode.node.type === DOMConstants.NATIVE
-    ) {
+    if (iterNode.node && typeof iterNode.node === "object" && iterNode.node.type === DOMConstants.NATIVE) {
       if (iterNode.node.t === "svg") {
         isSVG = true;
         break;
@@ -99,21 +87,12 @@ export const checkIfSVG = (step: TreeStep) => {
   return isSVG;
 };
 
-export const getVirtualElementId = (
-  el: VElement,
-  i?: number
-): string | undefined => {
-  const getElKey = (el: NativeVElement | ComponentVElement) =>
-    el.p.key ? "/" + el.p.key : "";
-  // console.log("el", el);
-  if (
-    el === null ||
-    el === undefined ||
-    typeof el == "string" ||
-    typeof el === "number" ||
-    typeof el === "boolean"
-  ) {
+export const getVirtualElementId = (el: VElement, i?: number): string | undefined => {
+  const getElKey = (el: NativeVElement | ComponentVElement) => (el.p.key ? "/" + el.p.key : "");
+  if (el === null || el === undefined || typeof el == "string" || typeof el === "number" || typeof el === "boolean") {
     return Number.isFinite(i) ? i + "" : undefined;
+  } else if (isCursorProxy(el)) {
+    return "";
   } else if (el.type == DOMConstants.NATIVE) {
     return el.t + getElKey(el);
   } else if (el.type === DOMConstants.COMPONENT) {
@@ -131,7 +110,5 @@ export const arrayRemove = <T>(array: T[], ...items: T[]): void => {
 };
 
 export function createError(code: string | number, desc?: string) {
-  return new Error(
-    `Error ${code}: https://github.com/abhishiv/alfama/wiki/Error-codes#code-${code}`
-  );
+  return new Error(`Error ${code}: https://github.com/abhishiv/alfama/wiki/Error-codes#code-${code}`);
 }
